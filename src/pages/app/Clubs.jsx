@@ -1,12 +1,78 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { clubs } from '@/lib/data'
-import { X, Users } from 'lucide-react'
+import { X, Users, Edit2, Check } from 'lucide-react'
+import { clubAdminsData } from '@/lib/clubAdminsData'
 
 export default function Clubs() {
   const [selectedClub, setSelectedClub] = useState(null)
+  const [clubsList, setClubsList] = useState(clubs)
+  const [isEditingClub, setIsEditingClub] = useState(false)
+  const [editForm, setEditForm] = useState({})
+  const [user] = useState(JSON.parse(localStorage.getItem('user') || '{}'))
+  
+  // Check if current user is a club admin for this club
+  const isClubAdmin = user.role === 'club_admin'
+  const userClubAdminData = clubAdminsData[user.email]
+  const isAdminOfThisClub = isClubAdmin && userClubAdminData?.club.id === selectedClub?.id
+
+  // Listen for club name updates from admin
+  useEffect(() => {
+    const handleClubNameUpdate = (event) => {
+      const { clubName } = event.detail
+      setClubsList(prevClubs => 
+        prevClubs.map(club => 
+          club.id === selectedClub?.id 
+            ? { ...club, name: clubName }
+            : club
+        )
+      )
+      // Update selected club display
+      if (selectedClub?.id) {
+        setSelectedClub(prev => ({ ...prev, name: clubName }))
+      }
+    }
+
+    window.addEventListener('clubNameUpdated', handleClubNameUpdate)
+    return () => window.removeEventListener('clubNameUpdated', handleClubNameUpdate)
+  }, [selectedClub?.id])
+
+  const handleEditClick = () => {
+    setEditForm({
+      name: selectedClub.name,
+      description: selectedClub.description,
+      members: selectedClub.members,
+      info: selectedClub.info,
+      founded: selectedClub.founded || '',
+      location: selectedClub.location || '',
+      instagram: selectedClub.instagram || '',
+      linkedin: selectedClub.linkedin || '',
+      facebook: selectedClub.facebook || ''
+    })
+    setIsEditingClub(true)
+  }
+
+  const handleSaveEdit = () => {
+    const updatedClub = { ...selectedClub, ...editForm }
+    setSelectedClub(updatedClub)
+    setClubsList(prevClubs => 
+      prevClubs.map(club => 
+        club.id === selectedClub.id ? updatedClub : club
+      )
+    )
+    // Dispatch event to sync with admin sidebar
+    window.dispatchEvent(new CustomEvent('clubNameUpdated', { detail: { clubName: editForm.name } }))
+    setIsEditingClub(false)
+  }
+
+  const handleCloseModal = () => {
+    setSelectedClub(null)
+    setIsEditingClub(false)
+  }
 
   return (
     <div className="space-y-6">
@@ -16,7 +82,7 @@ export default function Clubs() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clubs.map((club) => (
+        {clubsList.map((club) => (
           <Card 
             key={club.id} 
             className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -53,16 +119,94 @@ export default function Clubs() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <Card className="w-full max-w-2xl max-h-screen overflow-y-auto">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-              <div className="space-y-2">
-                <CardTitle className="text-2xl">{selectedClub.name}</CardTitle>
-                <CardDescription>{selectedClub.description}</CardDescription>
-              </div>
-              <button
-                onClick={() => setSelectedClub(null)}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              {isEditingClub ? (
+                <div className="space-y-4 w-full max-h-96 overflow-y-auto pr-4">
+                  <Label>Club Name</Label>
+                  <Input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                  <Label>Description</Label>
+                  <Input
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  />
+                  <Label>About</Label>
+                  <Input
+                    value={editForm.info}
+                    onChange={(e) => setEditForm({ ...editForm, info: e.target.value })}
+                  />
+                  <Label>Members</Label>
+                  <Input
+                    type="number"
+                    value={editForm.members}
+                    onChange={(e) => setEditForm({ ...editForm, members: parseInt(e.target.value) })}
+                  />
+                  <Label>Founded Year</Label>
+                  <Input
+                    value={editForm.founded}
+                    onChange={(e) => setEditForm({ ...editForm, founded: e.target.value })}
+                  />
+                  <Label>Location</Label>
+                  <Input
+                    value={editForm.location}
+                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  />
+                  <Label>Instagram</Label>
+                  <Input
+                    value={editForm.instagram}
+                    onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })}
+                    placeholder="@username"
+                  />
+                  <Label>LinkedIn</Label>
+                  <Input
+                    value={editForm.linkedin}
+                    onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })}
+                  />
+                  <Label>Facebook</Label>
+                  <Input
+                    value={editForm.facebook}
+                    onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })}
+                  />
+                  <div className="flex gap-2 pt-4">
+                    <Button onClick={handleSaveEdit} className="flex-1 gap-2">
+                      <Check className="w-4 h-4" />
+                      Save Changes
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsEditingClub(false)} 
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <CardTitle className="text-2xl">{selectedClub.name}</CardTitle>
+                    <CardDescription>{selectedClub.description}</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    {isAdminOfThisClub && (
+                      <button
+                        onClick={handleEditClick}
+                        className="p-2 hover:bg-muted rounded-lg transition-colors"
+                        title="Edit club details"
+                      >
+                        <Edit2 className="h-5 w-5 text-primary" />
+                      </button>
+                    )}
+                    <button
+                      onClick={handleCloseModal}
+                      className="p-2 hover:bg-muted rounded-lg transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                </>
+              )}
             </CardHeader>
 
             {selectedClub.imageUrl && (
@@ -93,6 +237,40 @@ export default function Clubs() {
                   {selectedClub.info}
                 </p>
               </div>
+
+              {(selectedClub.founded || selectedClub.location) && (
+                <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                  {selectedClub.founded && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Founded</p>
+                      <p className="font-semibold">{selectedClub.founded}</p>
+                    </div>
+                  )}
+                  {selectedClub.location && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Location</p>
+                      <p className="font-semibold">{selectedClub.location}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(selectedClub.instagram || selectedClub.linkedin || selectedClub.facebook) && (
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold text-lg mb-3">Social Media</h3>
+                  <div className="space-y-2">
+                    {selectedClub.instagram && (
+                      <p className="text-sm"><span className="font-semibold">Instagram:</span> {selectedClub.instagram}</p>
+                    )}
+                    {selectedClub.linkedin && (
+                      <p className="text-sm"><span className="font-semibold">LinkedIn:</span> {selectedClub.linkedin}</p>
+                    )}
+                    {selectedClub.facebook && (
+                      <p className="text-sm"><span className="font-semibold">Facebook:</span> {selectedClub.facebook}</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="border-t pt-4">
                 <h3 className="font-semibold text-lg mb-2">Activities</h3>
