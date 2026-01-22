@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    registrationNumber: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false,
@@ -36,7 +37,7 @@ export default function SignupPage() {
     setLoading(true)
 
     // Validation
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.fullName || !formData.email || !formData.registrationNumber || !formData.password || !formData.confirmPassword) {
       setError('All fields are required')
       setLoading(false)
       return
@@ -139,6 +140,18 @@ export default function SignupPage() {
                   type="email"
                   placeholder="john@example.com"
                   value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="registrationNumber">Registration Number</Label>
+                <Input
+                  id="registrationNumber"
+                  name="registrationNumber"
+                  placeholder="e.g., 2023001"
+                  value={formData.registrationNumber}
                   onChange={handleChange}
                   required
                 />
